@@ -7,6 +7,7 @@ import { authStore } from '../lib/auth';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Activity } from 'lucide-react';
+import api from '../lib/api';
 
 const registerSchema = z.object({
     name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -28,20 +29,17 @@ export const Register = () => {
 
     const onSubmit = async (data: RegisterFormData) => {
         try {
-            await authStore.register({
+            await api.post('/auth/register', {
                 name: data.name,
                 email: data.email,
                 password: data.password,
             });
 
-            // Auto login after register or redirect to login? 
-            // The previous logic mocked a login. Let's redirect to login for security or auto-login if token returned.
-            // For now, let's redirect to login to be safe, or we can implement auto-login if the register API returns a token.
-            // The current backend register only returns a message.
+            alert('Registration successful! Please login.');
             navigate('/login');
         } catch (error: any) {
-            console.error('Registration failed:', error);
-            alert(error.response?.data?.message || "Registration failed");
+            console.error('Registration error:', error);
+            alert(error.response?.data?.message || 'Registration failed. Please try again.');
         }
     };
 

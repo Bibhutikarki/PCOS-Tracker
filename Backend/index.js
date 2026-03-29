@@ -1,23 +1,33 @@
-// index.js
+// initialization
 import app from "./app.js";
 import mongoose from "mongoose";
+const port = 8000;
 
-const port = process.env.PORT || 5001;
-const uri = "mongodb+srv://bibhuti:12345@professionals.norpuqw.mongodb.net/?appName=Professionals";
-
+const uri = process.env.MONGODB_URI;
+const clientOptions = { serverApi: { version: '1', strict: true, deprecationErrors: true } };
 async function run() {
   try {
-    await mongoose.connect(uri, {
-      serverApi: { version: '1', strict: true, deprecationErrors: true }
-    });
-    console.log("MongoDB connected successfully!");
-  } catch (err) {
-    console.error("MongoDB connection error:", err);
+    // Create a Mongoose client with a MongoClientOptions object to set the Stable API version
+    await mongoose.connect(uri, clientOptions);
+    await mongoose.connection.db.admin().command({ ping: 1 });
+    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+  } finally {
+    // Ensures that the client will close when you finish/error
+    // await mongoose.disconnect();
   }
 }
+run().catch(console.dir);
 
-run();
+//Routes
+app.get('/test', (req, res) => {
+  res.json({ message: "Test route is working" });
+});
 
+app.get('/', (_req, res) => {
+  res.send("This is the Homepage");
+});
+
+//Starting the server in a port
 app.listen(port, "0.0.0.0", () => {
-  console.log(`Server running at http://localhost:${port}`);
+  console.log(`Server started at port ${port}`);
 });

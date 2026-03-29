@@ -19,12 +19,10 @@ import { cn } from '../lib/utils';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-
-// Mock Data Storage Helper
-const CYCLE_STORAGE_KEY = 'pcos_cycle_history';
+import api from '../lib/api';
 
 interface CycleEntry {
-    id: string;
+    _id: string;
     startDate: string;
     endDate: string;
 }
@@ -40,64 +38,64 @@ export const Cycle = () => {
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [history, setHistory] = useState<CycleEntry[]>([]);
     const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
 
-    const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<CycleFormData>({
+    const { register, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } = useForm<CycleFormData>({
         resolver: zodResolver(cycleSchema),
     });
 
-    // Load history from local storage
-    useEffect(() => {
-        const saved = localStorage.getItem(CYCLE_STORAGE_KEY);
-        if (saved) {
-            setHistory(JSON.parse(saved));
-        } else {
-            // Dummy data for first run
-            const dummy: CycleEntry[] = [
-                { id: '1', startDate: '2023-01-01', endDate: '2023-01-05' }
-            ];
-            setHistory(dummy);
-            localStorage.setItem(CYCLE_STORAGE_KEY, JSON.stringify(dummy));
+    const fetchHistory = async () => {
+        try {
+            setLoading(true);
+            const response = await api.get('/cycle');
+            setHistory(response.data);
+        } catch (error) {
+            console.error('Error fetching cycle history:', error);
+        } finally {
+            setLoading(false);
         }
+    };
+
+    useEffect(() => {
+        fetchHistory();
     }, []);
 
-    const saveHistory = (newHistory: CycleEntry[]) => {
-        setHistory(newHistory);
-        localStorage.setItem(CYCLE_STORAGE_KEY, JSON.stringify(newHistory));
-    };
-
-    const onSubmit = (data: CycleFormData) => {
-        if (selectedEntryId) {
-            // Update
-            const updated = history.map(h =>
-                h.id === selectedEntryId ? { ...h, startDate: data.startDate, endDate: data.endDate } : h
-            );
-            saveHistory(updated);
+    const onSubmit = async (data: CycleFormData) => {
+        try {
+            if (selectedEntryId) {
+                // Update
+                await api.put(`/cycle/${selectedEntryId}`, data);
+            } else {
+                // Create
+                await api.post('/cycle', data);
+            }
+            await fetchHistory();
             setSelectedEntryId(null);
-        } else {
-            // Create
-            const newEntry: CycleEntry = {
-                id: Date.now().toString(),
-                startDate: data.startDate,
-                endDate: data.endDate
-            };
-            saveHistory([newEntry, ...history]);
+            reset({ startDate: '', endDate: '' });
+        } catch (error: any) {
+            console.error('Error saving cycle:', error);
+            alert(error.response?.data?.message || 'Failed to save cycle entry.');
         }
-        reset({ startDate: '', endDate: '' });
     };
 
-    const handleDelete = (id: string) => {
+    const handleDelete = async (id: string) => {
         if (window.confirm('Are you sure you want to delete this entry?')) {
-            const updated = history.filter(h => h.id !== id);
-            saveHistory(updated);
-            if (selectedEntryId === id) {
-                setSelectedEntryId(null);
-                reset({ startDate: '', endDate: '' });
+            try {
+                await api.delete(`/cycle/${id}`);
+                await fetchHistory();
+                if (selectedEntryId === id) {
+                    setSelectedEntryId(null);
+                    reset({ startDate: '', endDate: '' });
+                }
+            } catch (error: any) {
+                console.error('Error deleting cycle:', error);
+                alert(error.response?.data?.message || 'Failed to delete cycle entry.');
             }
         }
     };
 
     const handleEdit = (entry: CycleEntry) => {
-        setSelectedEntryId(entry.id);
+        setSelectedEntryId(entry._id);
         setValue('startDate', entry.startDate);
         setValue('endDate', entry.endDate);
     };
@@ -218,33 +216,38 @@ export const Cycle = () => {
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                                {history.length === 0 && <p className="text-sm text-gray-500">No history logged.</p>}
-                                {history.sort((a, b) => b.startDate.localeCompare(a.startDate)).map(entry => {
-                                    const daysCount = differenceInDays(parseISO(entry.endDate), parseISO(entry.startDate)) + 1;
-                                    return (
-                                        <div
-                                            key={entry.id}
-                                            onClick={() => handleEdit(entry)}
-                                            className={cn(
-                                                "flex items-center justify-between p-3 rounded-lg border text-sm cursor-pointer hover:bg-gray-50",
-                                                selectedEntryId === entry.id ? "border-primary-500 bg-primary-50" : "border-gray-100"
-                                            )}
-                                        >
-                                            <div>
-                                                <div className="font-medium text-gray-900">
-                                                    {format(parseISO(entry.startDate), 'MMM d, yyyy')} - {format(parseISO(entry.endDate), 'MMM d, yyyy')}
-                                                </div>
-                                                <div className="text-gray-500">{daysCount} days</div>
-                                            </div>
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); handleDelete(entry.id); }}
-                                                className="text-gray-400 hover:text-red-500 p-1"
+                                {loading ? (
+                                    <p className="text-sm text-gray-500">Loading history...</p>
+                                ) : history.length === 0 ? (
+                                    <p className="text-sm text-gray-500">No history logged.</p>
+                                ) : (
+                                    history.map(entry => {
+                                        const daysCount = differenceInDays(parseISO(entry.endDate), parseISO(entry.startDate)) + 1;
+                                        return (
+                                            <div
+                                                key={entry._id}
+                                                onClick={() => handleEdit(entry)}
+                                                className={cn(
+                                                    "flex items-center justify-between p-3 rounded-lg border text-sm cursor-pointer hover:bg-gray-50",
+                                                    selectedEntryId === entry._id ? "border-primary-500 bg-primary-50" : "border-gray-100"
+                                                )}
                                             >
-                                                <Trash2 className="h-4 w-4" />
-                                            </button>
-                                        </div>
-                                    );
-                                })}
+                                                <div>
+                                                    <div className="font-medium text-gray-900">
+                                                        {format(parseISO(entry.startDate), 'MMM d, yyyy')} - {format(parseISO(entry.endDate), 'MMM d, yyyy')}
+                                                    </div>
+                                                    <div className="text-gray-500">{daysCount} days</div>
+                                                </div>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleDelete(entry._id); }}
+                                                    className="text-gray-400 hover:text-red-500 p-1"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                        );
+                                    })
+                                )}
                             </div>
                         </CardContent>
                     </Card>
@@ -253,3 +256,4 @@ export const Cycle = () => {
         </div>
     );
 };
+

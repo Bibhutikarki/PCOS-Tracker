@@ -7,6 +7,7 @@ import { authStore } from '../lib/auth';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Activity } from 'lucide-react';
+import api from '../lib/api';
 
 const loginSchema = z.object({
     email: z.string().email('Please enter a valid email'),
@@ -23,15 +24,19 @@ export const Login = () => {
 
     const onSubmit = async (data: LoginFormData) => {
         try {
-            await authStore.login({
+            const response = await api.post('/auth/login', {
                 email: data.email,
                 password: data.password,
             });
+
+            const { user, token } = response.data;
+
+            authStore.login(user, token);
+
             navigate('/dashboard');
         } catch (error: any) {
-            console.error('Login failed:', error);
-            // Ideally set an error state here to show to the user
-            alert(error.response?.data?.message || "Login failed");
+            console.error('Login error:', error);
+            alert(error.response?.data?.message || 'Login failed. Please try again.');
         }
     };
 

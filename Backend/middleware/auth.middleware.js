@@ -1,18 +1,18 @@
-import jwt from "jsonwebtoken";
+import jwt from 'jsonwebtoken';
 
-export function checkToken(req, res, next) {
-  const authHeader = req.headers.authorization;
+export function checkToken(req, res, next)
+{
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(403).send('Token not found');
 
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ message: "Token missing" });
-  }
+    try{
+        const data = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = data;
+        next();
 
-  try {
-    const token = authHeader.split(" ")[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
-    next();
-  } catch (err) {
-    return res.status(401).json({ message: "Invalid token" });
-  }
+    }
+    catch(e)
+    {
+        res.status(401).json(e);
+    }
 }

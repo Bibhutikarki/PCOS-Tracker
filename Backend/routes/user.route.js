@@ -1,10 +1,10 @@
+// routes/user.route.js
+
 import { Router } from "express";
 import { getAllUsers } from "../controller/user.controller.js";
-import { checkToken } from "../middleware/auth.middleware.js";
 
 const router = Router();
 
-// Protected route
-router.get("/users", checkToken, getAllUsers);
+router.get('/users', getAllUsers); // you can remove verifyToken if you want it public
 
 export default router;
