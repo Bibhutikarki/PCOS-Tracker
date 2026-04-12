@@ -46,21 +46,27 @@ export const AppLayout = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+    const { user } = authStore.getAuth();
 
     const handleLogout = () => {
         authStore.logout();
         navigate('/login');
     };
 
-    const navItems = [
-        { to: '/dashboard', icon: LayoutDashboard, label: 'User Dashboard' },
-        { to: '/cycle', icon: Calendar, label: 'Menstrual Cycle' },
-        { to: '/symptoms', icon: Activity, label: 'Symptom Tracker' },
-        { to: '/nutrition', icon: Utensils, label: 'Nutrition Planner' },
-        { to: '/workouts', icon: Dumbbell, label: 'Workout Planner' },
-        { to: '/insights', icon: Brain, label: 'AI Insights' },
-        { to: '/analytics', icon: BarChart3, label: 'Analytics & Reports' },
-    ];
+    const navItems = user?.role === 'admin' 
+        ? [
+            { to: '/admin', icon: LayoutDashboard, label: 'Clinical Overview' },
+            { to: '/admin/workouts', icon: Dumbbell, label: 'Workout Library' },
+          ]
+        : [
+            { to: '/dashboard', icon: LayoutDashboard, label: 'Home Dashboard' },
+            { to: '/cycle', icon: Calendar, label: 'Menstrual Cycle' },
+            { to: '/symptoms', icon: Activity, label: 'Symptom Tracker' },
+            { to: '/nutrition', icon: Utensils, label: 'Nutrition Planner' },
+            { to: '/workouts', icon: Dumbbell, label: 'Workout Planner' },
+            { to: '/insights', icon: Brain, label: 'AI Insights' },
+            { to: '/analytics', icon: BarChart3, label: 'Analytics & Reports' },
+          ];
 
     return (
         <div className="min-h-screen bg-gray-50 flex">
@@ -120,8 +126,8 @@ export const AppLayout = () => {
                     </button>
 
                     <div className="flex items-center gap-4 ml-auto">
-                        <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-medium">
-                            U
+                        <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-medium uppercase">
+                            {user?.name?.charAt(0) || 'U'}
                         </div>
                     </div>
                 </header>

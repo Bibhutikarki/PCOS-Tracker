@@ -1,10 +1,10 @@
 import express from 'express';
 import { addSymptom, getSymptoms, deleteSymptom } from '../controller/symptom.controller.js';
-import { checkToken } from '../middleware/auth.middleware.js';
+import { protect } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
-router.use(checkToken); // Protect all symptom routes
+router.use(protect); // Protect all symptom routes
 
 router.get('/', getSymptoms);
 router.post('/', addSymptom);

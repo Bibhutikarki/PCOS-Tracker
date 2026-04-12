@@ -1,7 +1,7 @@
 // initialization
 import app from "./app.js";
 import mongoose from "mongoose";
-const port = 8000;
+const port = process.env.PORT || 5001;
 
 const uri = process.env.MONGODB_URI;
 const clientOptions = { serverApi: { version: '1', strict: true, deprecationErrors: true } };

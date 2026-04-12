@@ -4,6 +4,21 @@
 
 @layer base {
   body {
-    @apply bg-gray-50 text-gray-900 antialiased;
+    background-color: theme('colors.gray.50');
+    color: theme('colors.gray.900');
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-family: 'Poppins', sans-serif;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: 'Google Sans', sans-serif;
+    font-weight: 700;
+    letter-spacing: theme('letterSpacing.tight');
   }
 }

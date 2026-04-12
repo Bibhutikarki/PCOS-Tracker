@@ -19,6 +19,10 @@ export default {
           800: '#9d174d',
           900: '#831843',
         }
+      },
+      fontFamily: {
+        sans: ['Poppins', 'sans-serif'],
+        display: ['Google Sans', 'sans-serif'],
       }
     },
   },

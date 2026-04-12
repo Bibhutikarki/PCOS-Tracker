@@ -1,24 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
-import { Save } from 'lucide-react';
-import { cn } from '../lib/utils';
-import api from '../lib/api';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import { Save, Activity, Settings2 } from 'lucide-react';
+import { cn } from '../../lib/utils';
+import api from '../../lib/api';
+import { useRiskAnalysis } from '../../hooks/useRiskAnalysis';
+import { SymptomEntry } from '../../lib/types';
+import { Modal } from '../../components/ui/Modal';
 
 const SYMPTOMS_LIST = [
     'Pain', 'Mood', 'Acne', 'Fatigue', 'Bloating', 'Headache',
     'Irregular Periods', 'Weight Gain', 'Hair Loss', 'Facial Hair'
 ];
-
-interface SymptomEntry {
-    _id?: string;
-    id?: string;
-    userId?: string;
-    date: string;
-    selectedSymptoms: string[];
-    severity: Record<string, number>;
-    notes: string;
-}
 
 export const Symptoms = () => {
     const [selected, setSelected] = useState<string[]>([]);
@@ -27,6 +20,15 @@ export const Symptoms = () => {
     const [showToast, setShowToast] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [history, setHistory] = useState<SymptomEntry[]>([]);
+
+    // Health Profile State (Synced with LocalStorage)
+    const [weight, setWeight] = useState(localStorage.getItem('pcos_weight') || '');
+    const [height, setHeight] = useState(localStorage.getItem('pcos_height') || '');
+    const [cycleLength, setCycleLength] = useState(localStorage.getItem('pcos_cycleLength') || '');
+    const [isIrregular, setIsIrregular] = useState(localStorage.getItem('pcos_isIrregular') === 'true');
+    const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+
+    const riskAnalysis = useRiskAnalysis(history, { weight, height, cycleLength, isIrregular });
 
     useEffect(() => {
         fetchHistory();
@@ -39,6 +41,14 @@ export const Symptoms = () => {
         } catch (error) {
             console.error('Error fetching symptoms history:', error);
         }
+    };
+
+    const saveProfile = () => {
+        localStorage.setItem('pcos_weight', weight);
+        localStorage.setItem('pcos_height', height);
+        localStorage.setItem('pcos_cycleLength', cycleLength);
+        localStorage.setItem('pcos_isIrregular', String(isIrregular));
+        setIsProfileModalOpen(false);
     };
 
     const toggleSymptom = (symptom: string) => {
@@ -100,11 +110,68 @@ export const Symptoms = () => {
         return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
     };
 
+    const getRiskColor = (level: string) => {
+        if (level === 'Low Risk') return 'text-green-600 bg-green-100';
+        if (level === 'Moderate Risk') return 'text-orange-600 bg-orange-100';
+        return 'text-red-600 bg-red-100';
+    };
+
     return (
         <div className="space-y-6 relative">
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold text-gray-900">Symptom Tracker</h1>
             </div>
+
+            {/* AI Risk Analysis Card */}
+            <Card className="border-primary-100 bg-primary-50/50">
+                <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                    <CardTitle className="flex items-center gap-2 text-primary-900">
+                        <Activity className="h-5 w-5 text-primary-600" />
+                        AI PCOS Risk Analysis
+                    </CardTitle>
+                    <Button variant="outline" size="sm" onClick={() => setIsProfileModalOpen(true)} className="flex items-center gap-2">
+                        <Settings2 className="h-4 w-4" />
+                        Health Profile
+                    </Button>
+                </CardHeader>
+                <CardContent>
+                    {weight && height && cycleLength ? (
+                        <>
+                            <div className="p-4 bg-white rounded-lg border border-primary-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div className="space-y-1">
+                                    <p className="text-sm font-medium text-gray-500">Predicted Risk Score</p>
+                                    <div className="flex items-end gap-2">
+                                        <span className="text-4xl font-extrabold text-gray-900">{riskAnalysis.score}</span>
+                                        <span className="text-lg text-gray-500 mb-1">/ 100</span>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col items-start sm:items-end gap-2">
+                                    <div className={`px-4 py-2 rounded-full font-bold text-base shadow-sm ${getRiskColor(riskAnalysis.level)}`}>
+                                        {riskAnalysis.level}
+                                    </div>
+                                    <div className="text-sm font-medium text-gray-600 bg-gray-100 px-3 py-1 rounded-full border border-gray-200">
+                                        Confidence: <span className="font-semibold">{riskAnalysis.confidence}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-4 italic bg-blue-50/50 p-2 rounded border border-blue-100">
+                                This AI system estimates PCOS risk based on your logged symptoms and profile. It does not replace professional medical diagnosis.
+                            </p>
+                        </>
+                    ) : (
+                        <div className="py-8 px-4 text-center bg-gray-50 border-2 border-dashed border-primary-200 rounded-lg">
+                            <Activity className="h-8 w-8 text-primary-400 mx-auto mb-3 opacity-50" />
+                            <h3 className="text-lg font-bold text-gray-900 mb-2">Health Profile Required</h3>
+                            <p className="text-sm text-gray-600 mb-6 max-w-sm mx-auto">
+                                To calculate your AI-driven PCOS risk score, please enter your weight, height, and average cycle length.
+                            </p>
+                            <Button onClick={() => setIsProfileModalOpen(true)} className="px-6 font-semibold">
+                                Complete Profile
+                            </Button>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card>
@@ -241,6 +308,66 @@ export const Symptoms = () => {
                     </div>
                 </div>
             )}
+
+            {/* Health Profile Modal */}
+            <Modal
+                isOpen={isProfileModalOpen}
+                onClose={() => setIsProfileModalOpen(false)}
+                title="Update Health Profile"
+            >
+                <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Weight (kg)</label>
+                            <input
+                                type="number"
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                                value={weight}
+                                onChange={(e) => setWeight(e.target.value)}
+                                placeholder="e.g. 68"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Height (cm)</label>
+                            <input
+                                type="number"
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                                value={height}
+                                onChange={(e) => setHeight(e.target.value)}
+                                placeholder="e.g. 165"
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Average Cycle Length (days)</label>
+                        <input
+                            type="number"
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                            value={cycleLength}
+                            onChange={(e) => setCycleLength(e.target.value)}
+                            placeholder="e.g. 28"
+                        />
+                    </div>
+
+                    <div className="flex items-center gap-3 mt-4 pt-4 border-t border-gray-100">
+                        <input
+                            type="checkbox"
+                            id="irregular"
+                            checked={isIrregular}
+                            onChange={(e) => setIsIrregular(e.target.checked)}
+                            className="h-5 w-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                        />
+                        <label htmlFor="irregular" className="text-sm font-medium text-gray-700 cursor-pointer select-none">
+                            My periods are frequently irregular or absent
+                        </label>
+                    </div>
+
+                    <div className="flex justify-end gap-2 mt-6">
+                        <Button onClick={saveProfile}>Save Profile</Button>
+                    </div>
+                </div>
+            </Modal>
 
             {/* Simple Toast */}
             <div

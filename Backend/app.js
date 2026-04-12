@@ -3,16 +3,18 @@ import authRoutes from './routes/auth.route.js';
 import userroutes from './routes/user.route.js';
 import cycleRoutes from './routes/cycle.route.js';
 import symptomRoutes from './routes/symptom.route.js';
+import workoutRoutes from './routes/workout.route.js';
+import adminRoutes from './routes/admin.route.js';
 import dotenv from 'dotenv';
 import cors from 'cors';
 const app = express();
 
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:5174'], // Allow frontend dev ports
+  origin: true, // Reflects the request origin, effectively allowing any origin that sends credentials
   credentials: true
 }))
 
-app.options(/.*/, cors());
+
 
 app.use(express.json());
 
@@ -27,9 +29,11 @@ app.use('/api/auth', authRoutes);
 app.use('/api/user', userroutes);
 app.use('/api/cycle', cycleRoutes);
 app.use('/api/symptoms', symptomRoutes);
+app.use('/api/workout', workoutRoutes);
+app.use('/api/admin', adminRoutes);
 
 
-// test route 
+// test route
 app.get("/", (req, res) => {
   res.send("API is running");
 });

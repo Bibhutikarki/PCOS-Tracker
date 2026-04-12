@@ -3,43 +3,44 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Link, useNavigate } from 'react-router-dom';
-import { authStore } from '../lib/auth';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
+import { authStore } from '../../lib/auth';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
 import { Activity } from 'lucide-react';
-import api from '../lib/api';
+import api from '../../lib/api';
 
-const registerSchema = z.object({
-    name: z.string().min(2, 'Name must be at least 2 characters'),
+const loginSchema = z.object({
     email: z.string().email('Please enter a valid email'),
     password: z.string().min(6, 'Password must be at least 6 characters'),
-    confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ["confirmPassword"],
 });
 
-type RegisterFormData = z.infer<typeof registerSchema>;
+type LoginFormData = z.infer<typeof loginSchema>;
 
-export const Register = () => {
+export const Login = () => {
     const navigate = useNavigate();
-    const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<RegisterFormData>({
-        resolver: zodResolver(registerSchema),
+    const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginFormData>({
+        resolver: zodResolver(loginSchema),
     });
 
-    const onSubmit = async (data: RegisterFormData) => {
+    const onSubmit = async (data: LoginFormData) => {
         try {
-            await api.post('/auth/register', {
-                name: data.name,
+            const response = await api.post('/auth/login', {
                 email: data.email,
                 password: data.password,
             });
 
-            alert('Registration successful! Please login.');
-            navigate('/login');
+            const { user, token } = response.data;
+
+            authStore.login(user, token);
+
+            if (user.role === 'admin') {
+                navigate('/admin');
+            } else {
+                navigate('/dashboard');
+            }
         } catch (error: any) {
-            console.error('Registration error:', error);
-            alert(error.response?.data?.message || 'Registration failed. Please try again.');
+            console.error('Login error:', error);
+            alert(error.response?.data?.message || 'Login failed. Please try again.');
         }
     };
 
@@ -50,19 +51,13 @@ export const Register = () => {
                     <Activity className="h-12 w-12 text-primary-600" />
                 </div>
                 <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-                    Create your account
+                    Sign in to your account
                 </h2>
             </div>
 
             <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
                 <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
                     <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
-                        <Input
-                            label="Full Name"
-                            {...register('name')}
-                            error={errors.name?.message}
-                        />
-
                         <Input
                             label="Email address"
                             type="email"
@@ -77,12 +72,13 @@ export const Register = () => {
                             error={errors.password?.message}
                         />
 
-                        <Input
-                            label="Confirm Password"
-                            type="password"
-                            {...register('confirmPassword')}
-                            error={errors.confirmPassword?.message}
-                        />
+                        <div className="flex items-center justify-between">
+                            <div className="text-sm">
+                                <Link to="/forgot-password" className="font-medium text-primary-600 hover:text-primary-500">
+                                    Forgot your password?
+                                </Link>
+                            </div>
+                        </div>
 
                         <div>
                             <Button
@@ -90,7 +86,7 @@ export const Register = () => {
                                 className="w-full"
                                 isLoading={isSubmitting}
                             >
-                                Register
+                                Sign in
                             </Button>
                         </div>
                     </form>
@@ -102,15 +98,15 @@ export const Register = () => {
                             </div>
                             <div className="relative flex justify-center text-sm">
                                 <span className="px-2 bg-white text-gray-500">
-                                    Already have an account?
+                                    New to platform?
                                 </span>
                             </div>
                         </div>
 
                         <div className="mt-6">
-                            <Link to="/login">
+                            <Link to="/register">
                                 <Button variant="outline" className="w-full">
-                                    Sign in
+                                    Create an account
                                 </Button>
                             </Link>
                         </div>
