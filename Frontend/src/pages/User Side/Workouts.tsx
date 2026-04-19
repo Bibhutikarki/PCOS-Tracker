@@ -22,6 +22,7 @@ import { useWorkouts } from '../../hooks/useWorkouts';
 import { useHealthData } from '../../hooks/useHealthData';
 import { useCyclePhase, CyclePhase } from '../../hooks/useCyclePhase';
 import { format } from 'date-fns';
+import { authStore } from '../../lib/auth';
 
 interface Routine {
     _id: string;
@@ -43,6 +44,11 @@ export const Workouts = () => {
     const [timeLeft, setTimeLeft] = useState(0);
     const [isActive, setIsActive] = useState(false);
     const [routinesLoading, setRoutinesLoading] = useState(true);
+
+    const currentUser = authStore.getAuth().user;
+    const [reminderTime, setReminderTime] = useState(currentUser?.workoutReminderTime || '08:00');
+    const [reminderEnabled, setReminderEnabled] = useState(currentUser?.workoutReminderEnabled || false);
+    const [savingSettings, setSavingSettings] = useState(false);
 
     useEffect(() => {
         const fetchRoutines = async () => {
@@ -111,6 +117,54 @@ export const Workouts = () => {
         return <div className="p-8 text-center text-gray-500">Loading your personalized workout plan...</div>;
     }
 
+    const handleSaveSettings = async () => {
+        if (!currentUser) return;
+        setSavingSettings(true);
+        try {
+            const userId = currentUser._id || currentUser.id;
+            const res = await api.put(`/user/${userId}/settings`, {
+                workoutReminderTime: reminderTime,
+                workoutReminderEnabled: reminderEnabled
+            });
+            const { token } = authStore.getAuth();
+            authStore.login({
+                ...res.data.user,
+                id: res.data.user._id || res.data.user.id
+            }, token);
+            alert('Settings saved successfully!');
+            if (reminderEnabled && 'Notification' in window && Notification.permission !== 'granted') {
+                await Notification.requestPermission();
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Failed to save settings.');
+        } finally {
+            setSavingSettings(false);
+        }
+    };
+
+    const handleTestNotification = async () => {
+        if (!('Notification' in window)) {
+            alert('Your browser does not support notifications.');
+            return;
+        }
+        
+        let perm = Notification.permission;
+        if (perm !== 'granted') {
+            perm = await Notification.requestPermission();
+        }
+
+        if (perm === 'granted') {
+            alert('The website is now requesting a system notification! If a macOS notification does NOT pop up immediately after closing this alert, your Mac (Focus Mode / Do Not Disturb) or your Browser Settings are blocking it.');
+            new Notification('Testing PCOS Tracker', {
+                body: 'Notifications are working perfectly!',
+                icon: '/favicon.ico'
+            });
+        } else {
+            alert('Notification permission denied by your browser or OS. Check your macOS System Settings.');
+        }
+    };
+
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
             {/* Header Section */}
@@ -126,6 +180,57 @@ export const Workouts = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Reminder Settings Card */}
+            <Card className="bg-gradient-to-r from-primary-50 to-white border-primary-100">
+                <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div>
+                        <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                            <Clock className="w-5 h-5 text-primary-500" />
+                            Daily Workout Reminder
+                        </h3>
+                        <p className="text-sm text-gray-500">Enable a daily reminder to stay consistent with your workout plan.</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <input 
+                            type="time" 
+                            className="text-lg bg-white border border-gray-200 rounded-lg px-3 py-2 text-gray-700 outline-none focus:ring-2 focus:ring-primary-500"
+                            value={reminderTime}
+                            onChange={(e) => setReminderTime(e.target.value)}
+                        />
+                        <button 
+                            className={cn(
+                                "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                                reminderEnabled ? "bg-primary-500" : "bg-gray-200"
+                            )}
+                            onClick={() => setReminderEnabled(!reminderEnabled)}
+                        >
+                            <span 
+                                className={cn(
+                                    "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                                    reminderEnabled ? "translate-x-6" : "translate-x-1"
+                                )}
+                            />
+                        </button>
+                        <Button
+                            onClick={handleTestNotification}
+                            size="sm"
+                            variant="outline"
+                            className="border-primary-200 text-primary-600 hover:bg-primary-50 hidden md:flex"
+                        >
+                            Test
+                        </Button>
+                        <Button
+                            onClick={handleSaveSettings}
+                            disabled={savingSettings}
+                            size="sm"
+                            className="bg-primary-600 hover:bg-primary-700 text-white"
+                        >
+                            {savingSettings ? 'Saving...' : 'Save'}
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
 
             {/* Smart Recommendation */}
             <section className="space-y-4">

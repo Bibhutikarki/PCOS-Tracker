@@ -19,6 +19,22 @@ const userSchema = new Schema({
         enum: ['user', 'admin'],
         default: 'user'
     },
+    workoutReminderTime: {
+        type: String, // format "HH:MM"
+        default: null
+    },
+    workoutReminderEnabled: {
+        type: Boolean,
+        default: false
+    },
+    weight: {
+        type: Number, // in kg
+        default: null
+    },
+    height: {
+        type: Number, // in cm
+        default: null
+    },
     createdAt: {
         type: Date,
         default: Date.now

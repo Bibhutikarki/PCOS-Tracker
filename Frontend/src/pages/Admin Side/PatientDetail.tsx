@@ -1,25 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
-import { 
-    ChevronLeft, 
-    UserCircle, 
-    Activity, 
-    Calendar, 
+import {
+    ChevronLeft,
+    UserCircle,
+    Activity,
+    Calendar,
     Dumbbell,
     Circle,
     Mail,
     Phone,
     TrendingUp,
-    MapPin
+    MoveVertical,
+    Weight
+
 } from 'lucide-react';
-import { 
-    LineChart, 
-    Line, 
-    XAxis, 
-    YAxis, 
-    CartesianGrid, 
-    Tooltip, 
+import {
+    LineChart,
+    Line,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
     ResponsiveContainer,
     AreaChart,
     Area
@@ -27,6 +29,8 @@ import {
 import api from '../../lib/api';
 import { Button } from '../../components/ui/Button';
 import { format } from 'date-fns';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 interface PatientProfile {
     user: {
@@ -34,6 +38,8 @@ interface PatientProfile {
         email: string;
         createdAt: string;
         role: string;
+        weight?: number;
+        height?: number;
     };
     history: {
         symptoms: any[];
@@ -47,6 +53,7 @@ export const PatientDetail = () => {
     const navigate = useNavigate();
     const [profile, setProfile] = useState<PatientProfile | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -62,6 +69,51 @@ export const PatientDetail = () => {
         fetchProfile();
     }, [id]);
 
+    const handleDownloadPdf = async () => {
+        const element = document.getElementById('patient-report-content');
+        if (!element) return;
+
+        setIsGeneratingPdf(true);
+        try {
+            const canvas = await html2canvas(element, {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff'
+            });
+
+            const imgData = canvas.toDataURL('image/png');
+
+            const pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: 'a4'
+            });
+
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+            let heightLeft = pdfHeight;
+            let position = 0;
+
+            pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+            heightLeft -= pdf.internal.pageSize.getHeight();
+
+            while (heightLeft >= 0) {
+                position = heightLeft - pdfHeight;
+                pdf.addPage();
+                pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+                heightLeft -= pdf.internal.pageSize.getHeight();
+            }
+
+            pdf.save(`${profile?.user.name.replace(/\s+/g, '_')}_Clinical_Report.pdf`);
+        } catch (error) {
+            console.error('Error generating PDF:', error);
+        } finally {
+            setIsGeneratingPdf(false);
+        }
+    };
+
     if (loading) return <div className="p-8 text-center text-gray-400 italic font-display">Parsing patient journey history...</div>;
     if (!profile) return <div className="p-8 text-center">Patient not found.</div>;
 
@@ -74,8 +126,8 @@ export const PatientDetail = () => {
     }).slice(-7);
 
     return (
-        <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-700 font-sans pb-12">
-            <div className="flex items-center justify-between">
+        <div id="patient-report-content" className="space-y-8 animate-in slide-in-from-bottom-4 duration-700 font-sans pb-12 px-4 bg-white min-h-screen">
+            <div data-html2canvas-ignore className="flex items-center justify-between">
                 <Button variant="ghost" className="font-black text-xs uppercase p-0 h-auto hover:bg-transparent text-gray-400 hover:text-gray-900" onClick={() => navigate('/admin')}>
                     <ChevronLeft className="h-4 w-4 mr-1" /> Back to Registry
                 </Button>
@@ -96,18 +148,38 @@ export const PatientDetail = () => {
                     </div>
                     <div className="flex flex-wrap gap-6">
                         <div className="flex items-center gap-2">
-                             <Mail className="h-4 w-4 text-gray-400" />
-                             <span className="text-sm font-bold text-gray-700">{profile.user.email}</span>
+                            <Mail className="h-4 w-4 text-gray-400" />
+                            <span className="text-sm font-bold text-gray-700">{profile.user.email}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                             <Calendar className="h-4 w-4 text-gray-400" />
-                             <span className="text-sm font-bold text-gray-700">Joined {new Date(profile.user.createdAt).toLocaleDateString()}</span>
+                            <Calendar className="h-4 w-4 text-gray-400" />
+                            <span className="text-sm font-bold text-gray-700">Joined {new Date(profile.user.createdAt).toLocaleDateString()}</span>
                         </div>
+
+                    </div>
+                    <div>
+                        {profile.user.weight && (
+                            <div className="flex items-center gap-2">
+                                <Weight className="h-4 w-4 text-blue-400" />
+                                <span className="text-sm font-bold text-gray-700">{profile.user.weight} kg</span>
+                            </div>
+                        )}
+                        {profile.user.height && (
+                            <div className="flex items-center gap-2">
+                                <MoveVertical className="h-4 w-4 text-emerald-400" />
+                                <span className="text-sm font-bold text-gray-700">{profile.user.height} cm</span>
+                            </div>
+                        )}
                     </div>
                 </div>
-                <div className="flex gap-2">
+                <div data-html2canvas-ignore className="flex gap-2">
                     <Button variant="outline" className="border-2 font-black italic shadow-lg shadow-gray-100">Contact Patient</Button>
-                    <Button className="bg-gray-900 hover:bg-black font-black italic shadow-xl">Generate Clinical Report</Button>
+                    <Button
+                        onClick={handleDownloadPdf}
+                        disabled={isGeneratingPdf}
+                        className="bg-gray-900 hover:bg-black font-black italic shadow-xl">
+                        {isGeneratingPdf ? 'Generating PDF...' : 'Generate Clinical Report'}
+                    </Button>
                 </div>
             </div>
 
@@ -124,14 +196,14 @@ export const PatientDetail = () => {
                             <AreaChart data={symptomTrend}>
                                 <defs>
                                     <linearGradient id="colorSev" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.2}/>
-                                        <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
+                                        <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.2} />
+                                        <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                 <XAxis dataKey="date" fontSize={10} axisLine={false} tickLine={false} />
                                 <YAxis domain={[0, 5]} fontSize={10} axisLine={false} tickLine={false} />
-                                <Tooltip 
+                                <Tooltip
                                     contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}
                                 />
                                 <Area type="monotone" dataKey="severity" stroke="#f43f5e" strokeWidth={4} fillOpacity={1} fill="url(#colorSev)" />

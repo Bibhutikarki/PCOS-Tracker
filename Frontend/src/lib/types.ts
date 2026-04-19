@@ -3,6 +3,10 @@ export interface User {
     name: string;
     email: string;
     role: string;
+    workoutReminderTime?: string;
+    workoutReminderEnabled?: boolean;
+    height?: number;
+    weight?: number;
 }
 
 export interface AuthState {

@@ -14,6 +14,9 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { authStore } from '../lib/auth';
+import { useWorkoutReminder } from '../hooks/useWorkoutReminder';
+import api from '../lib/api';
+import { Button } from '../components/ui/Button';
 
 const SidebarNavItem = ({
     to,
@@ -46,11 +49,44 @@ export const AppLayout = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+    const [isProfileOpen, setIsProfileOpen] = React.useState(false);
+    const [isEditingProfile, setIsEditingProfile] = React.useState(false);
+    
+    // We may want to re-grab user from authStore each render if it updates
     const { user } = authStore.getAuth();
+    const [editHeight, setEditHeight] = React.useState(user?.height?.toString() || '');
+    const [editWeight, setEditWeight] = React.useState(user?.weight?.toString() || '');
+    const [isSavingProfile, setIsSavingProfile] = React.useState(false);
+
+    // Initialize the workout reminder hook globally
+    useWorkoutReminder();
 
     const handleLogout = () => {
         authStore.logout();
         navigate('/login');
+    };
+
+    const handleSaveProfile = async () => {
+        if (!user) return;
+        setIsSavingProfile(true);
+        try {
+            const userId = user._id || user.id;
+            const res = await api.put(`/user/${userId}/settings`, {
+                height: editHeight ? parseFloat(editHeight) : null,
+                weight: editWeight ? parseFloat(editWeight) : null
+            });
+            const { token } = authStore.getAuth();
+            authStore.login({
+                ...res.data.user,
+                id: res.data.user._id || res.data.user.id
+            }, token);
+            setIsEditingProfile(false);
+        } catch (error) {
+            console.error('Failed to save profile', error);
+            alert('Failed to update profile');
+        } finally {
+            setIsSavingProfile(false);
+        }
     };
 
     const navItems = user?.role === 'admin' 
@@ -126,8 +162,97 @@ export const AppLayout = () => {
                     </button>
 
                     <div className="flex items-center gap-4 ml-auto">
-                        <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-medium uppercase">
-                            {user?.name?.charAt(0) || 'U'}
+                        <div className="relative">
+                            <button 
+                                onClick={() => setIsProfileOpen(!isProfileOpen)}
+                                className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-medium uppercase hover:ring-2 hover:ring-primary-300 transition-all"
+                            >
+                                {user?.name?.charAt(0) || 'U'}
+                            </button>
+                            
+                            {isProfileOpen && (
+                                <>
+                                    <div 
+                                        className="fixed inset-0 z-40"
+                                        onClick={() => setIsProfileOpen(false)}
+                                    />
+                                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-gray-100 p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                                        <div className="flex items-center gap-3 mb-4">
+                                            <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-bold uppercase text-xl">
+                                                {user?.name?.charAt(0) || 'U'}
+                                            </div>
+                                            <div className="flex-1 overflow-hidden">
+                                                <h4 className="font-bold text-gray-900 truncate">{user?.name}</h4>
+                                                <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                                            </div>
+                                        </div>
+                                        
+                                        {!isEditingProfile ? (
+                                            <div className="space-y-3 border-t border-gray-100 pt-3">
+                                                <div className="flex justify-between items-center text-sm">
+                                                    <span className="text-gray-500">Account Type</span>
+                                                    <span className={cn(
+                                                        "px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest",
+                                                        user?.role === 'admin' ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'
+                                                    )}>
+                                                        {user?.role}
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between items-center text-sm">
+                                                    <span className="text-gray-500">Height</span>
+                                                    <span className="font-medium text-gray-900">{user?.height ? `${user.height} cm` : 'Not set'}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center text-sm">
+                                                    <span className="text-gray-500">Weight</span>
+                                                    <span className="font-medium text-gray-900">{user?.weight ? `${user.weight} kg` : 'Not set'}</span>
+                                                </div>
+                                                {user?.workoutReminderTime && (
+                                                    <div className="flex justify-between items-center text-[11px] uppercase tracking-wider font-bold mt-2 pt-2 border-t border-gray-50">
+                                                        <span className="text-gray-400">Reminder</span>
+                                                        <span className={user?.workoutReminderEnabled ? "text-primary-600" : "text-gray-400"}>
+                                                            {user.workoutReminderEnabled ? user.workoutReminderTime : 'Disabled'}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                <div className="pt-2">
+                                                    <Button variant="outline" size="sm" className="w-full text-xs h-8" onClick={() => setIsEditingProfile(true)}>
+                                                        Edit Profile Details
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-3 border-t border-gray-100 pt-3">
+                                                <div className="space-y-1">
+                                                    <label className="text-xs text-gray-500">Height (cm)</label>
+                                                    <input 
+                                                        type="number" 
+                                                        className="w-full px-2 py-1 text-sm border border-gray-200 rounded outline-none focus:border-primary-500"
+                                                        value={editHeight}
+                                                        onChange={(e) => setEditHeight(e.target.value)}
+                                                        placeholder="e.g. 165"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-xs text-gray-500">Weight (kg)</label>
+                                                    <input 
+                                                        type="number" 
+                                                        className="w-full px-2 py-1 text-sm border border-gray-200 rounded outline-none focus:border-primary-500"
+                                                        value={editWeight}
+                                                        onChange={(e) => setEditWeight(e.target.value)}
+                                                        placeholder="e.g. 60"
+                                                    />
+                                                </div>
+                                                <div className="flex gap-2 pt-2">
+                                                    <Button variant="outline" size="sm" className="flex-1 text-xs h-8" onClick={() => setIsEditingProfile(false)}>Cancel</Button>
+                                                    <Button size="sm" className="flex-1 text-xs h-8" onClick={handleSaveProfile} disabled={isSavingProfile}>
+                                                        {isSavingProfile ? 'Saving...' : 'Save'}
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
                 </header>

@@ -23,7 +23,7 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 
 export const Register = () => {
     const navigate = useNavigate();
-    const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<RegisterFormData>({
+    const { register, handleSubmit, setError, formState: { errors, isSubmitting } } = useForm<RegisterFormData>({
         resolver: zodResolver(registerSchema),
     });
 
@@ -35,11 +35,18 @@ export const Register = () => {
                 password: data.password,
             });
 
-            alert('Registration successful! Please login.');
             navigate('/login');
         } catch (error: any) {
             console.error('Registration error:', error);
-            alert(error.response?.data?.message || 'Registration failed. Please try again.');
+            const message = error.response?.data?.message || 'Registration failed. Please try again.';
+            
+            // If the error message indicates the user already exists, attach it to the email field
+            if (message.toLowerCase().includes('already exists') || message.toLowerCase().includes('in use')) {
+                setError('email', { type: 'manual', message });
+            } else {
+                // Fallback for other errors (e.g., password field)
+                setError('password', { type: 'manual', message });
+            }
         }
     };
 

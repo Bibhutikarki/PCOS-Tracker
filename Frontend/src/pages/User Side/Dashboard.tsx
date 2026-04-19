@@ -125,22 +125,6 @@ export const Dashboard = () => {
                         </Link>
                     </CardContent>
                 </Card>
-
-                <Card className="hover:shadow-md transition-shadow">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-xs uppercase font-black text-gray-400 tracking-widest">Active Goals</CardTitle>
-                        <Dumbbell className="h-4 w-4 text-green-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-3xl font-black text-gray-900">3/5</div>
-                        <p className="text-sm text-gray-500 mt-1">Checklists completed</p>
-                        <div className="mt-4 pt-4 border-t border-gray-50 text-xs">
-                            <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                                <div className="bg-green-500 h-full w-[60%]" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

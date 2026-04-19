@@ -18,7 +18,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export const Login = () => {
     const navigate = useNavigate();
-    const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginFormData>({
+    const { register, handleSubmit, setError, formState: { errors, isSubmitting } } = useForm<LoginFormData>({
         resolver: zodResolver(loginSchema),
     });
 
@@ -40,7 +40,8 @@ export const Login = () => {
             }
         } catch (error: any) {
             console.error('Login error:', error);
-            alert(error.response?.data?.message || 'Login failed. Please try again.');
+            const message = error.response?.data?.message || 'Login failed. Please try again.';
+            setError('password', { type: 'manual', message });
         }
     };
 

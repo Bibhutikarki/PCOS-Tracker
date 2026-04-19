@@ -7,6 +7,7 @@ import api from '../../lib/api';
 import { useRiskAnalysis } from '../../hooks/useRiskAnalysis';
 import { SymptomEntry } from '../../lib/types';
 import { Modal } from '../../components/ui/Modal';
+import { authStore } from '../../lib/auth';
 
 const SYMPTOMS_LIST = [
     'Pain', 'Mood', 'Acne', 'Fatigue', 'Bloating', 'Headache',
@@ -21,12 +22,15 @@ export const Symptoms = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [history, setHistory] = useState<SymptomEntry[]>([]);
 
-    // Health Profile State (Synced with LocalStorage)
-    const [weight, setWeight] = useState(localStorage.getItem('pcos_weight') || '');
-    const [height, setHeight] = useState(localStorage.getItem('pcos_height') || '');
+    const { user } = authStore.getAuth();
+    
+    // Health Profile State
+    const [weight, setWeight] = useState(user?.weight?.toString() || localStorage.getItem('pcos_weight') || '');
+    const [height, setHeight] = useState(user?.height?.toString() || localStorage.getItem('pcos_height') || '');
     const [cycleLength, setCycleLength] = useState(localStorage.getItem('pcos_cycleLength') || '');
     const [isIrregular, setIsIrregular] = useState(localStorage.getItem('pcos_isIrregular') === 'true');
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+    const [isSavingProfile, setIsSavingProfile] = useState(false);
 
     const riskAnalysis = useRiskAnalysis(history, { weight, height, cycleLength, isIrregular });
 
@@ -43,12 +47,33 @@ export const Symptoms = () => {
         }
     };
 
-    const saveProfile = () => {
-        localStorage.setItem('pcos_weight', weight);
-        localStorage.setItem('pcos_height', height);
-        localStorage.setItem('pcos_cycleLength', cycleLength);
-        localStorage.setItem('pcos_isIrregular', String(isIrregular));
-        setIsProfileModalOpen(false);
+    const saveProfile = async () => {
+        try {
+            setIsSavingProfile(true);
+            const w = parseFloat(weight);
+            const h = parseFloat(height);
+
+            if (user && !isNaN(w) && !isNaN(h)) {
+                await api.put(`/user/${user._id}/settings`, { weight: w, height: h });
+                authStore.updateUser({ weight: w, height: h });
+                window.dispatchEvent(new Event('authChange'));
+            }
+
+            localStorage.setItem('pcos_weight', weight);
+            localStorage.setItem('pcos_height', height);
+            localStorage.setItem('pcos_cycleLength', cycleLength);
+            localStorage.setItem('pcos_isIrregular', String(isIrregular));
+            setIsProfileModalOpen(false);
+            
+            // Show toast for profile save too
+            setShowToast(true);
+            setTimeout(() => setShowToast(false), 3000);
+        } catch (error) {
+            console.error("Failed to update profile", error);
+            alert("Failed to save health profile to database");
+        } finally {
+            setIsSavingProfile(false);
+        }
     };
 
     const toggleSymptom = (symptom: string) => {
@@ -364,7 +389,7 @@ export const Symptoms = () => {
                     </div>
 
                     <div className="flex justify-end gap-2 mt-6">
-                        <Button onClick={saveProfile}>Save Profile</Button>
+                        <Button onClick={saveProfile} isLoading={isSavingProfile}>Save Profile</Button>
                     </div>
                 </div>
             </Modal>
