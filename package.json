@@ -1,0 +1,21 @@
+{
+  "name": "pcos-women-health-tracker-tests",
+  "version": "1.0.0",
+  "description": "Root level test configuration",
+  "private": true,
+  "scripts": {
+    "test": "jest"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "dependencies": {
+    "date-fns": "^3.6.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/*.test.js"
+    ]
+  }
+}

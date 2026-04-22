@@ -299,7 +299,7 @@ export const Symptoms = () => {
 
                                     <div className="flex-1 flex flex-wrap gap-2 items-center sm:pl-4">
                                         {entry.selectedSymptoms.map((sym) => {
-                                            const sev = entry.severity[sym] || 1;
+                                            const sev = entry.severity?.[sym] || 1;
                                             const getSeverityColor = (s: number) => {
                                                 if (s <= 2) return "bg-green-100 text-green-700 border-green-200";
                                                 if (s <= 3) return "bg-orange-100 text-orange-700 border-orange-200";

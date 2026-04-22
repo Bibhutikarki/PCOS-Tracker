@@ -13,6 +13,27 @@ export async function getCycles(req, res) {
 export async function addCycle(req, res) {
     try {
         const { startDate, endDate } = req.body;
+
+        // 1. Basic sanity check: startDate <= endDate
+        if (new Date(startDate) > new Date(endDate)) {
+            return res.status(400).json({ message: "Start date cannot be after end date" });
+        }
+
+        // 2. Overlap check
+        const overlappingCycle = await Cycle.findOne({
+            userId: req.user.id,
+            $or: [
+                { startDate: { $lte: endDate }, endDate: { $gte: startDate } }
+            ]
+        });
+
+        if (overlappingCycle) {
+            return res.status(400).json({ 
+                message: "Cycle dates overlap with an existing entry",
+                overlapping: overlappingCycle 
+            });
+        }
+
         const newCycle = new Cycle({
             userId: req.user.id,
             startDate,
@@ -30,6 +51,27 @@ export async function updateCycle(req, res) {
     try {
         const { id } = req.params;
         const { startDate, endDate } = req.body;
+
+        // 1. Basic sanity check: startDate <= endDate
+        if (new Date(startDate) > new Date(endDate)) {
+            return res.status(400).json({ message: "Start date cannot be after end date" });
+        }
+
+        // 2. Overlap check (excluding current cycle)
+        const overlappingCycle = await Cycle.findOne({
+            userId: req.user.id,
+            _id: { $ne: id },
+            $or: [
+                { startDate: { $lte: endDate }, endDate: { $gte: startDate } }
+            ]
+        });
+
+        if (overlappingCycle) {
+            return res.status(400).json({ 
+                message: "Cycle dates overlap with an existing entry",
+                overlapping: overlappingCycle 
+            });
+        }
 
         const updatedCycle = await Cycle.findOneAndUpdate(
             { _id: id, userId: req.user.id },

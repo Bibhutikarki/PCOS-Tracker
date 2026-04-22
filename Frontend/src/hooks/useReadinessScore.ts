@@ -24,7 +24,7 @@ export const useReadinessScore = (
 
         if (recentLogs.length > 0) {
             const maxSeverity = Math.max(...recentLogs.map(log => 
-                Math.max(...Object.values(log.severity))
+                Math.max(...Object.values(log.severity || {}), 0)
             ));
             
             if (maxSeverity >= 4) score -= 25;

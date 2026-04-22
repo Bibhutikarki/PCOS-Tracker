@@ -1,6 +1,5 @@
 import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
-
 import jwt from "jsonwebtoken";
 
 export async function register(req, res) {
@@ -59,6 +58,48 @@ export async function login(req, res) {
     const { password: _, ...userWithoutPassword } = user.toObject();
 
     res.json({ message: "Login Successful", user: userWithoutPassword, token });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ message: "Server error", error: e.message });
+  }
+}
+
+// PUT /api/auth/change-password  (requires protect middleware)
+export async function changePassword(req, res) {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: "Both current and new password are required" });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: "New password must be at least 6 characters" });
+    }
+
+    // Fetch the full user record (including password hash) using the id set by protect middleware
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Verify current password
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Current password is incorrect" });
+    }
+
+    // Hash and save new password
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    // Issue a new token — old token is now stale; client must re-login
+    const newToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
+
+    return res.status(200).json({
+      message: "Password updated successfully. Please log in again with your new password.",
+      token: newToken,
+    });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ message: "Server error", error: e.message });

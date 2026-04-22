@@ -8,11 +8,11 @@ import { useCyclePhase } from '../../hooks/useCyclePhase';
 import { useRiskAnalysis } from '../../hooks/useRiskAnalysis';
 import { useReadinessScore } from '../../hooks/useReadinessScore';
 import { cn } from '../../lib/utils';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, differenceInDays } from 'date-fns';
 
 export const Dashboard = () => {
     const { symptomsHistory, cycleHistory, profile, loading } = useHealthData();
-    const { currentPhase, dayOfCycle, daysUntilNext } = useCyclePhase(cycleHistory);
+    const { currentPhase, dayOfCycle, daysUntilNext, avgCycleLength } = useCyclePhase(cycleHistory);
     const riskAnalysis = useRiskAnalysis(symptomsHistory, profile);
     const { score: readinessScore, feedback: readinessFeedback } = useReadinessScore(
         symptomsHistory,
@@ -89,6 +89,7 @@ export const Dashboard = () => {
                         <p className="text-sm font-bold text-gray-700 mt-1 capitalize">{currentPhase || 'No data'} Phase</p>
                         <div className="mt-4 pt-4 border-t border-gray-50 text-xs text-gray-500 font-medium">
                             Next period in <span className="text-gray-900 font-bold">{daysUntilNext || '--'} days</span>
+                            {avgCycleLength && <div className="mt-1">Avg. Cycle: <span className="text-gray-900 font-bold">{avgCycleLength} days</span></div>}
                         </div>
                     </CardContent>
                 </Card>
@@ -100,7 +101,7 @@ export const Dashboard = () => {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-black text-gray-900 truncate">
-                            {latestSymptom ? Object.keys(latestSymptom.severity)[0] : 'None Logged'}
+                            {latestSymptom?.severity ? Object.keys(latestSymptom.severity)[0] : 'None Logged'}
                         </div>
                         <p className="text-sm text-gray-500 mt-1 italic">
                             {latestSymptom ? `Logged ${format(parseISO(latestSymptom.date), 'MMM d')}` : 'Start tracking today'}

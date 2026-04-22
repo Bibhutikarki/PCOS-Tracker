@@ -19,11 +19,9 @@ export const useWorkoutReminder = () => {
             const currentTimeStr = `${currentHour}:${currentMinute}`;
             
             const todayStr = now.toDateString();
-            const storageKey = `${todayStr}-${workoutReminderTime}`;
 
-            if (currentTimeStr === workoutReminderTime && lastFiredDate.current !== storageKey) {
-                console.log(`[Workout Reminder] Time matched (${currentTimeStr})! Firing notification...`);
-                lastFiredDate.current = storageKey; // Prevent firing for the *same* time again today
+            if (currentTimeStr === workoutReminderTime && lastFiredDate.current !== todayStr) {
+                lastFiredDate.current = todayStr; // Prevent firing again today
                 triggerNotification();
             }
         };

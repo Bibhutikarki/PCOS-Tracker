@@ -39,6 +39,7 @@ export const Cycle = () => {
     const [history, setHistory] = useState<CycleEntry[]>([]);
     const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const [formError, setFormError] = useState<string | null>(null);
 
     const { register, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } = useForm<CycleFormData>({
         resolver: zodResolver(cycleSchema),
@@ -62,6 +63,7 @@ export const Cycle = () => {
 
     const onSubmit = async (data: CycleFormData) => {
         try {
+            setFormError(null);
             if (selectedEntryId) {
                 // Update
                 await api.put(`/cycle/${selectedEntryId}`, data);
@@ -74,13 +76,14 @@ export const Cycle = () => {
             reset({ startDate: '', endDate: '' });
         } catch (error: any) {
             console.error('Error saving cycle:', error);
-            alert(error.response?.data?.message || 'Failed to save cycle entry.');
+            setFormError('Mention valid date without overlapping.');
         }
     };
 
     const handleDelete = async (id: string) => {
         if (window.confirm('Are you sure you want to delete this entry?')) {
             try {
+                setFormError(null);
                 await api.delete(`/cycle/${id}`);
                 await fetchHistory();
                 if (selectedEntryId === id) {
@@ -89,7 +92,7 @@ export const Cycle = () => {
                 }
             } catch (error: any) {
                 console.error('Error deleting cycle:', error);
-                alert(error.response?.data?.message || 'Failed to delete cycle entry.');
+                setFormError('Failed to delete cycle entry.');
             }
         }
     };
@@ -177,6 +180,11 @@ export const Cycle = () => {
                         </CardHeader>
                         <CardContent>
                             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                                {formError && (
+                                    <div className="p-3 bg-red-50 border border-red-100 text-red-600 text-xs font-bold rounded-lg animate-in fade-in slide-in-from-top-2 duration-300">
+                                        {formError}
+                                    </div>
+                                )}
                                 <Input
                                     label="Start Date"
                                     type="date"

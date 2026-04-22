@@ -10,7 +10,9 @@ import {
     BarChart3,
     LogOut,
     Menu,
-    X
+    X,
+    Lock,
+    ChevronLeft
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { authStore } from '../lib/auth';
@@ -51,12 +53,21 @@ export const AppLayout = () => {
     const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
     const [isProfileOpen, setIsProfileOpen] = React.useState(false);
     const [isEditingProfile, setIsEditingProfile] = React.useState(false);
+    const [isChangingPassword, setIsChangingPassword] = React.useState(false);
     
     // We may want to re-grab user from authStore each render if it updates
     const { user } = authStore.getAuth();
     const [editHeight, setEditHeight] = React.useState(user?.height?.toString() || '');
     const [editWeight, setEditWeight] = React.useState(user?.weight?.toString() || '');
     const [isSavingProfile, setIsSavingProfile] = React.useState(false);
+
+    // Change-password form state
+    const [cpCurrent, setCpCurrent] = React.useState('');
+    const [cpNew, setCpNew] = React.useState('');
+    const [cpConfirm, setCpConfirm] = React.useState('');
+    const [cpLoading, setCpLoading] = React.useState(false);
+    const [cpError, setCpError] = React.useState('');
+    const [cpSuccess, setCpSuccess] = React.useState('');
 
     // Initialize the workout reminder hook globally
     useWorkoutReminder();
@@ -86,6 +97,43 @@ export const AppLayout = () => {
             alert('Failed to update profile');
         } finally {
             setIsSavingProfile(false);
+        }
+    };
+
+    const handleChangePassword = async () => {
+        setCpError('');
+        setCpSuccess('');
+
+        if (!cpNew || !cpCurrent) {
+            setCpError('Please fill in all fields.');
+            return;
+        }
+        if (cpNew.length < 6) {
+            setCpError('New password must be at least 6 characters.');
+            return;
+        }
+        if (cpNew !== cpConfirm) {
+            setCpError('New passwords do not match.');
+            return;
+        }
+
+        setCpLoading(true);
+        try {
+            await api.put('/auth/change-password', {
+                currentPassword: cpCurrent,
+                newPassword: cpNew,
+            });
+            setCpSuccess('Password changed! Logging you out now...');
+            // Invalidate session — force re-login
+            setTimeout(() => {
+                authStore.logout();
+                navigate('/login');
+            }, 1800);
+        } catch (err: any) {
+            const msg = err?.response?.data?.message || 'Failed to change password.';
+            setCpError(msg);
+        } finally {
+            setCpLoading(false);
         }
     };
 
@@ -174,10 +222,20 @@ export const AppLayout = () => {
                                 <>
                                     <div 
                                         className="fixed inset-0 z-40"
-                                        onClick={() => setIsProfileOpen(false)}
+                                        onClick={() => { setIsProfileOpen(false); setIsChangingPassword(false); setCpError(''); setCpSuccess(''); }}
                                     />
-                                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-gray-100 p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-lg border border-gray-100 p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                                        
+                                        {/* ── Header ─────────────────────────── */}
                                         <div className="flex items-center gap-3 mb-4">
+                                            {isChangingPassword && (
+                                                <button
+                                                    onClick={() => { setIsChangingPassword(false); setCpError(''); setCpSuccess(''); }}
+                                                    className="p-1 rounded-full hover:bg-gray-100 transition-colors"
+                                                >
+                                                    <ChevronLeft className="w-4 h-4 text-gray-500" />
+                                                </button>
+                                            )}
                                             <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-bold uppercase text-xl">
                                                 {user?.name?.charAt(0) || 'U'}
                                             </div>
@@ -186,7 +244,68 @@ export const AppLayout = () => {
                                                 <p className="text-xs text-gray-500 truncate">{user?.email}</p>
                                             </div>
                                         </div>
-                                        
+
+                                        {/* ── Change Password Panel ────────── */}
+                                        {isChangingPassword ? (
+                                            <div className="space-y-3 border-t border-gray-100 pt-3">
+                                                <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider flex items-center gap-1.5">
+                                                    <Lock className="w-3.5 h-3.5" /> Change Password
+                                                </p>
+
+                                                {cpSuccess ? (
+                                                    <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs text-emerald-700 font-medium text-center">
+                                                        {cpSuccess}
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <div className="space-y-1">
+                                                            <label className="text-xs text-gray-500">Current Password</label>
+                                                            <input
+                                                                type="password"
+                                                                className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded outline-none focus:border-primary-500"
+                                                                value={cpCurrent}
+                                                                onChange={(e) => setCpCurrent(e.target.value)}
+                                                                placeholder="Enter current password"
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <label className="text-xs text-gray-500">New Password</label>
+                                                            <input
+                                                                type="password"
+                                                                className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded outline-none focus:border-primary-500"
+                                                                value={cpNew}
+                                                                onChange={(e) => setCpNew(e.target.value)}
+                                                                placeholder="At least 6 characters"
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <label className="text-xs text-gray-500">Confirm New Password</label>
+                                                            <input
+                                                                type="password"
+                                                                className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded outline-none focus:border-primary-500"
+                                                                value={cpConfirm}
+                                                                onChange={(e) => setCpConfirm(e.target.value)}
+                                                                placeholder="Repeat new password"
+                                                            />
+                                                        </div>
+
+                                                        {cpError && (
+                                                            <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded px-2 py-1">{cpError}</p>
+                                                        )}
+
+                                                        <Button
+                                                            size="sm"
+                                                            className="w-full text-xs h-8 mt-1"
+                                                            onClick={handleChangePassword}
+                                                            disabled={cpLoading}
+                                                        >
+                                                            {cpLoading ? 'Updating...' : 'Update Password'}
+                                                        </Button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        ) : (
+                                        <>
                                         {!isEditingProfile ? (
                                             <div className="space-y-3 border-t border-gray-100 pt-3">
                                                 <div className="flex justify-between items-center text-sm">
@@ -214,10 +333,16 @@ export const AppLayout = () => {
                                                         </span>
                                                     </div>
                                                 )}
-                                                <div className="pt-2">
+                                                <div className="pt-2 space-y-2">
                                                     <Button variant="outline" size="sm" className="w-full text-xs h-8" onClick={() => setIsEditingProfile(true)}>
                                                         Edit Profile Details
                                                     </Button>
+                                                    <button
+                                                        className="w-full flex items-center justify-center gap-1.5 text-xs h-8 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors font-medium"
+                                                        onClick={() => { setIsChangingPassword(true); setCpError(''); setCpSuccess(''); setCpCurrent(''); setCpNew(''); setCpConfirm(''); }}
+                                                    >
+                                                        <Lock className="w-3.5 h-3.5" /> Change Password
+                                                    </button>
                                                 </div>
                                             </div>
                                         ) : (
@@ -249,6 +374,8 @@ export const AppLayout = () => {
                                                     </Button>
                                                 </div>
                                             </div>
+                                        )}
+                                        </>
                                         )}
                                     </div>
                                 </>

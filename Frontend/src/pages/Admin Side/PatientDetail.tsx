@@ -28,7 +28,7 @@ import {
 } from 'recharts';
 import api from '../../lib/api';
 import { Button } from '../../components/ui/Button';
-import { format } from 'date-fns';
+import { format, differenceInDays, parseISO } from 'date-fns';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -118,12 +118,19 @@ export const PatientDetail = () => {
     if (!profile) return <div className="p-8 text-center">Patient not found.</div>;
 
     const symptomTrend = [...profile.history.symptoms].reverse().map(s => {
-        const avg = Object.values(s.severity).reduce((a: any, b: any) => a + b, 0) as number / Object.values(s.severity).length;
+        const severityValues = Object.values(s.severity || {});
+        const avg = severityValues.length > 0 ? (severityValues.reduce((a: any, b: any) => a + b, 0) as number / severityValues.length) : 0;
         return {
             date: format(new Date(s.date), 'MMM dd'),
             severity: parseFloat(avg.toFixed(1))
         };
     }).slice(-7);
+    
+    const avgCycleLength = profile.history.cycles.length > 0
+        ? Math.round(profile.history.cycles.reduce((acc, curr) => 
+            acc + (curr.length || (differenceInDays(parseISO(curr.endDate), parseISO(curr.startDate)) + 1)), 0) / profile.history.cycles.length)
+        : null;
+
 
     return (
         <div id="patient-report-content" className="space-y-8 animate-in slide-in-from-bottom-4 duration-700 font-sans pb-12 px-4 bg-white min-h-screen">
@@ -239,7 +246,10 @@ export const PatientDetail = () => {
                             <div className="flex items-center justify-between gap-4">
                                 <div>
                                     <p className="text-3xl font-black">{profile.history.cycles.length}</p>
-                                    <p className="text-xs text-emerald-200 uppercase tracking-tighter italic">Cycles Observed</p>
+                                    <p className="text-xs text-emerald-200 uppercase tracking-tighter italic">
+                                        Cycles Observed
+                                        {avgCycleLength && <span className="block mt-1 text-[10px] opacity-80">Avg. Length: {avgCycleLength} days</span>}
+                                    </p>
                                 </div>
                                 <div className="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center">
                                     <Activity className="h-6 w-6 text-emerald-100" />
@@ -265,12 +275,12 @@ export const PatientDetail = () => {
                                         <div>
                                             <p className="text-xs font-black text-gray-900 italic">{format(new Date(log.date), 'MMM dd, yyyy')}</p>
                                             <p className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter mt-0.5">
-                                                {Object.keys(log.severity).length} Markers Tracked
+                                                {Object.keys(log.severity || {}).length} Markers Tracked
                                             </p>
                                         </div>
                                     </div>
                                     <div className="flex gap-1">
-                                        {Object.entries(log.severity).slice(0, 3).map(([sym, sev]: any, j) => (
+                                        {Object.entries(log.severity || {}).slice(0, 3).map(([sym, sev]: any, j) => (
                                             <span key={j} className="px-2 py-0.5 bg-gray-100 rounded text-[9px] font-black text-gray-400 uppercase">
                                                 {sym}: {sev}
                                             </span>

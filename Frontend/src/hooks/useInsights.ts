@@ -53,7 +53,8 @@ export const useInsights = (
 
             if (cycle) {
                 const day = differenceInDays(date, parseISO(cycle.startDate)) + 1;
-                const avgSev = Object.values(entry.severity).reduce((a, b) => a + b, 0) / Object.keys(entry.severity).length;
+                const severityValues = Object.values(entry.severity || {});
+                const avgSev = severityValues.length > 0 ? severityValues.reduce((a, b) => a + b, 0) / severityValues.length : 0;
                 symptomsByDay[day] = (symptomsByDay[day] || 0) + avgSev;
             }
         });
@@ -83,7 +84,7 @@ export const useInsights = (
             });
         }
 
-        const recentSeverity = symptomsHistory[0] ? Object.values(symptomsHistory[0].severity).reduce((a, b) => Math.max(a, b), 0) : 0;
+        const recentSeverity = symptomsHistory[0]?.severity ? Object.values(symptomsHistory[0].severity).reduce((a, b) => Math.max(a, b), 0) : 0;
         if (recentSeverity >= 4) {
             alerts.push({
                 type: 'warning',

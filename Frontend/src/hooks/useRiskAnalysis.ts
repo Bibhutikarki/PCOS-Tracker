@@ -64,7 +64,7 @@ export const useRiskAnalysis = (
                 recencyFactor = Math.max(0.3, 1.0 - (daysAgo - 7) * 0.05);
             }
 
-            Object.entries(entry.severity).forEach(([sym, sev]) => {
+            Object.entries(entry.severity || {}).forEach(([sym, sev]) => {
                 if (!symptomStats[sym]) {
                     symptomStats[sym] = { count: 0, maxSev: 0, sumSev: 0, weightedSum: 0, consecutiveDays: 0 };
                 }
@@ -83,7 +83,7 @@ export const useRiskAnalysis = (
         Object.keys(MAJOR_WEIGHTS).forEach(sym => {
             let consecutive = 0;
             for (const entry of sortedHistory) {
-                if (entry.severity[sym] >= 3) consecutive++;
+                if (entry.severity?.[sym] >= 3) consecutive++;
                 else break;
             }
             if (symptomStats[sym]) symptomStats[sym].consecutiveDays = consecutive;

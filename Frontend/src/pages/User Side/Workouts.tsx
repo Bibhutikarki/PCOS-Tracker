@@ -143,28 +143,6 @@ export const Workouts = () => {
         }
     };
 
-    const handleTestNotification = async () => {
-        if (!('Notification' in window)) {
-            alert('Your browser does not support notifications.');
-            return;
-        }
-        
-        let perm = Notification.permission;
-        if (perm !== 'granted') {
-            perm = await Notification.requestPermission();
-        }
-
-        if (perm === 'granted') {
-            alert('The website is now requesting a system notification! If a macOS notification does NOT pop up immediately after closing this alert, your Mac (Focus Mode / Do Not Disturb) or your Browser Settings are blocking it.');
-            new Notification('Testing PCOS Tracker', {
-                body: 'Notifications are working perfectly!',
-                icon: '/favicon.ico'
-            });
-        } else {
-            alert('Notification permission denied by your browser or OS. Check your macOS System Settings.');
-        }
-    };
-
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
             {/* Header Section */}
@@ -192,34 +170,26 @@ export const Workouts = () => {
                         <p className="text-sm text-gray-500">Enable a daily reminder to stay consistent with your workout plan.</p>
                     </div>
                     <div className="flex items-center gap-4">
-                        <input 
-                            type="time" 
+                        <input
+                            type="time"
                             className="text-lg bg-white border border-gray-200 rounded-lg px-3 py-2 text-gray-700 outline-none focus:ring-2 focus:ring-primary-500"
                             value={reminderTime}
                             onChange={(e) => setReminderTime(e.target.value)}
                         />
-                        <button 
+                        <button
                             className={cn(
                                 "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
                                 reminderEnabled ? "bg-primary-500" : "bg-gray-200"
                             )}
                             onClick={() => setReminderEnabled(!reminderEnabled)}
                         >
-                            <span 
+                            <span
                                 className={cn(
                                     "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
                                     reminderEnabled ? "translate-x-6" : "translate-x-1"
                                 )}
                             />
                         </button>
-                        <Button
-                            onClick={handleTestNotification}
-                            size="sm"
-                            variant="outline"
-                            className="border-primary-200 text-primary-600 hover:bg-primary-50 hidden md:flex"
-                        >
-                            Test
-                        </Button>
                         <Button
                             onClick={handleSaveSettings}
                             disabled={savingSettings}

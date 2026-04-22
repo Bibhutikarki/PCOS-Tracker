@@ -1,7 +1,7 @@
 // initialization
 import app from "./app.js";
 import mongoose from "mongoose";
-const port = process.env.PORT || 5050;
+const port = process.env.PORT;
 
 const uri = process.env.MONGODB_URI;
 const clientOptions = { serverApi: { version: '1', strict: true, deprecationErrors: true } };
@@ -17,15 +17,6 @@ async function run() {
   }
 }
 run().catch(console.dir);
-
-//Routes
-app.get('/test', (req, res) => {
-  res.json({ message: "Test route is working" });
-});
-
-app.get('/', (_req, res) => {
-  res.send("This is the Homepage");
-});
 
 //Starting the server in a port
 app.listen(port, "0.0.0.0", () => {
